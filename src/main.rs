@@ -12,7 +12,9 @@ enum Direction {
     Left,
     Right,
     TopScreen,
-    BottomScreen
+    BottomScreen,
+    Home,
+    End
 }
 
 struct CleanUp;
@@ -127,6 +129,14 @@ impl Editor {
                 code: KeyCode::PageDown,
                 modifiers: event::KeyModifiers::NONE
             } => self.output.move_cursor(Direction::BottomScreen),
+            KeyEvent {
+                code: KeyCode::Home,
+                modifiers: event::KeyModifiers::NONE
+            } => self.output.move_cursor(Direction::Home),
+            KeyEvent {
+                code: KeyCode::End,
+                modifiers: event::KeyModifiers::NONE
+            } => self.output.move_cursor(Direction::End),
             _ => {}
         }
 
@@ -229,12 +239,10 @@ impl CursorController {
             Direction::Down => { self.cursor_y = self.cursor_y.saturating_add(1) },
             Direction::Left => { self.cursor_x = self.cursor_x.saturating_sub(1) },
             Direction::Right => { self.cursor_x = self.cursor_x.saturating_add(1) },
-            Direction::TopScreen => {
-                self.cursor_y = 0
-            },
-            Direction::BottomScreen => {
-                self.cursor_y = self.screen_rows - 1
-            }
+            Direction::TopScreen => { self.cursor_y = 0 },
+            Direction::BottomScreen => { self.cursor_y = self.screen_rows - 1 }
+            Direction::Home => { self.cursor_x = 0 },
+            Direction::End => { self.cursor_x = self.screen_cols - 1 }
         }
     }
 }
