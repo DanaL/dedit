@@ -1,9 +1,10 @@
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use crossterm::terminal::ClearType;
 use crossterm::{cursor, event, execute, queue, terminal};
-use std::io;
+use std::{cmp, env, fs, io};
 use std::io::stdout;
 use std::io::Write;
+use std::path::Path;
 use std::time::Duration;
 
 enum Direction {
@@ -152,7 +153,8 @@ impl Editor {
 struct Output {
     win_size: (usize, usize),
     editor_contents: EditorContents,
-    cursor_controller: CursorController
+    cursor_controller: CursorController,
+    editor_rows: EditorRows
 }
 
 impl Output {
@@ -162,7 +164,8 @@ impl Output {
         Self { 
             win_size,
             editor_contents: EditorContents::new(),
-            cursor_controller: CursorController::new(win_size)
+            cursor_controller: CursorController::new(win_size),
+            editor_rows: EditorRows::new()
         }
     }
 
@@ -176,23 +179,29 @@ impl Output {
         let screen_cols = self.win_size.0;
 
         for j in 0..screen_rows {
+            let buffer_row = j + self.cursor_controller.row_offset;
+            if buffer_row >= self.editor_rows.number_of_rows() {
+                if self.editor_rows.number_of_rows() == 0 && j == screen_rows / 3 {
+                    let mut greeting = format!("Dana's Baby Editor {}", "0.0.1");
+                    if greeting.len() > screen_cols {
+                        greeting.truncate(screen_cols)
+                    }
 
-            if j == screen_rows / 3 {
-                let mut greeting = format!("Dana's Baby Editor {}", "0.0.1");
-                if greeting.len() > screen_cols {
-                    greeting.truncate(screen_cols)
+                    let mut padding = (screen_cols - greeting.len()) / 2;
+                    if padding != 0 {
+                        self.editor_contents.push('~');
+                        padding -= 1;
+                    }
+                    (0..padding).for_each(|_| self.editor_contents.push(' '));
+                    self.editor_contents.push_str(&greeting);
                 }
-
-                let mut padding = (screen_cols - greeting.len()) / 2;
-                if padding != 0 {
-                    self.editor_contents.push('~');
-                    padding -= 1;
+                else {
+                    self.editor_contents.push('~')
                 }
-                (0..padding).for_each(|_| self.editor_contents.push(' '));
-                self.editor_contents.push_str(&greeting);
             }
             else {
-                self.editor_contents.push('~')
+                let len = cmp::min(self.editor_rows.get_row(buffer_row).len(), screen_cols);
+                self.editor_contents.push_str(&self.editor_rows.get_row(buffer_row)[..len])
             }
 
             queue!(
@@ -225,12 +234,20 @@ struct CursorController {
     cursor_x: usize,
     cursor_y: usize,
     screen_cols: usize,
-    screen_rows: usize
+    screen_rows: usize,
+    row_offset: usize
 }
 
 impl CursorController {
     fn new(win_size: (usize, usize)) -> CursorController {
-        Self { cursor_x: 0, cursor_y: 0, screen_cols: win_size.0, screen_rows: win_size.1 }
+        Self { 
+            cursor_x: 0, 
+            cursor_y: 0, 
+            screen_cols: 
+            win_size.0, 
+            screen_rows: win_size.1,
+            row_offset: 0, 
+        }
     }
 
     fn move_cursor(&mut self, dir: Direction) {
@@ -244,6 +261,34 @@ impl CursorController {
             Direction::Home => { self.cursor_x = 0 },
             Direction::End => { self.cursor_x = self.screen_cols - 1 }
         }
+    }
+}
+
+struct EditorRows {
+    row_contents: Vec<Box<str>>
+}
+
+impl EditorRows {
+    fn new() -> Self {        
+        let mut arg = env::args();
+
+        match arg.nth(1) {
+            None => Self { row_contents: Vec::new() },            
+            Some(file) => Self::from_file(file.as_ref()),
+        }        
+    }
+
+    fn from_file(file: &Path) -> Self {
+        let contents = fs::read_to_string(file).expect("Unable to read file");
+        Self { row_contents: contents.lines().map(|txt| txt.into()).collect() }
+    }
+
+    fn number_of_rows(&self) -> usize {
+        self.row_contents.len()
+    }
+
+    fn get_row(&self, n: usize) -> &str {
+        &self.row_contents[n]
     }
 }
 
