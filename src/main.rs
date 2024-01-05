@@ -273,6 +273,10 @@ impl CursorController {
                 if self.cursor_x < self.screen_cols - 1 {
                     self.cursor_x += 1;
                 }
+                else if self.cursor_x == self.screen_cols - 1 {
+                    self.cursor_x = 0;
+                    self.move_cursor(Direction::Down, number_of_rows);
+                }
             },
             Direction::TopScreen => { self.cursor_y = 0 },
             Direction::BottomScreen => { self.cursor_y = self.screen_rows - 1 }
