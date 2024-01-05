@@ -269,7 +269,11 @@ impl CursorController {
                 }
             },
             Direction::Left => { self.cursor_x = self.cursor_x.saturating_sub(1) },
-            Direction::Right => { self.cursor_x = self.cursor_x.saturating_add(1) },
+            Direction::Right => { 
+                if self.cursor_x < self.screen_cols - 1 {
+                    self.cursor_x += 1;
+                }
+            },
             Direction::TopScreen => { self.cursor_y = 0 },
             Direction::BottomScreen => { self.cursor_y = self.screen_rows - 1 }
             Direction::Home => { self.cursor_x = 0 },
