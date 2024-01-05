@@ -216,15 +216,16 @@ impl Output {
     }
 
     fn move_cursor(&mut self, dir: Direction) {
-        self.cursor_controller.move_cursor(dir);
+        self.cursor_controller.move_cursor(dir, self.editor_rows.number_of_rows());
     }
 
     fn refresh_screen(&mut self) -> crossterm::Result<()> {
+        self.cursor_controller.scroll();
         queue!(self.editor_contents, cursor::Hide, cursor::MoveTo(0, 0))?;
         self.draw_rows();
 
         let cursor_x = self.cursor_controller.cursor_x;
-        let cursor_y = self.cursor_controller.cursor_y;
+        let cursor_y = self.cursor_controller.cursor_y - self.cursor_controller.row_offset;
         queue!(self.editor_contents, cursor::MoveTo(cursor_x as u16, cursor_y as u16), cursor::Show)?;
         self.editor_contents.flush()
     }
@@ -250,10 +251,23 @@ impl CursorController {
         }
     }
 
-    fn move_cursor(&mut self, dir: Direction) {
+    fn scroll(&mut self) {
+        self.row_offset = cmp::min(self.row_offset, self.cursor_y);
+        if self.cursor_y >= self.row_offset + self.screen_rows {
+            //let mut msg = format!("cursor_y: {} screen_rows: {}", self.cursor_y, self.screen_rows);
+            //panic!("{}", msg);
+            self.row_offset = self.cursor_y - (self.screen_rows - 1);
+        }
+    }
+
+    fn move_cursor(&mut self, dir: Direction, number_of_rows: usize) {
         match dir {
             Direction::Up => { self.cursor_y = self.cursor_y.saturating_sub(1) },
-            Direction::Down => { self.cursor_y = self.cursor_y.saturating_add(1) },
+            Direction::Down => { 
+                if self.cursor_y < number_of_rows {
+                    self.cursor_y += 1;
+                }
+            },
             Direction::Left => { self.cursor_x = self.cursor_x.saturating_sub(1) },
             Direction::Right => { self.cursor_x = self.cursor_x.saturating_add(1) },
             Direction::TopScreen => { self.cursor_y = 0 },
@@ -292,7 +306,7 @@ impl EditorRows {
     }
 }
 
-fn main() -> crossterm::Result<()> {    
+fn main() -> crossterm::Result<()> {
     let _clean_up = CleanUp;
     
     terminal::enable_raw_mode()?;
