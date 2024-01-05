@@ -10,7 +10,9 @@ enum Direction {
     Up,
     Down,
     Left,
-    Right
+    Right,
+    TopScreen,
+    BottomScreen
 }
 
 struct CleanUp;
@@ -116,7 +118,15 @@ impl Editor {
             KeyEvent {
                 code: dir @ (KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right),
                 modifiers: event::KeyModifiers::NONE,
-            } => self.output.move_cursor(Self::arrow_to_dir(dir)),            
+            } => self.output.move_cursor(Self::arrow_to_dir(dir)),
+            KeyEvent {
+                code: KeyCode::PageUp,
+                modifiers: event::KeyModifiers::NONE
+            } => self.output.move_cursor(Direction::TopScreen),
+            KeyEvent {
+                code: KeyCode::PageDown,
+                modifiers: event::KeyModifiers::NONE
+            } => self.output.move_cursor(Direction::BottomScreen),
             _ => {}
         }
 
@@ -216,9 +226,15 @@ impl CursorController {
     fn move_cursor(&mut self, dir: Direction) {
         match dir {
             Direction::Up => { self.cursor_y = self.cursor_y.saturating_sub(1) },
-            Direction::Down => { self.cursor_y = self.cursor_y.saturating_add(1) },            
-            Direction::Left => { self.cursor_x = self.cursor_x.saturating_sub(1) },                
-            Direction::Right => { self.cursor_x = self.cursor_x.saturating_add(1) },                
+            Direction::Down => { self.cursor_y = self.cursor_y.saturating_add(1) },
+            Direction::Left => { self.cursor_x = self.cursor_x.saturating_sub(1) },
+            Direction::Right => { self.cursor_x = self.cursor_x.saturating_add(1) },
+            Direction::TopScreen => {
+                self.cursor_y = 0
+            },
+            Direction::BottomScreen => {
+                self.cursor_y = self.screen_rows - 1
+            }
         }
     }
 }
